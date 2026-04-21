@@ -1,37 +1,33 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import appLogo from '/favicon.svg'
-import PWABadge from './PWABadge.tsx'
-import './App.css'
+import { useState } from "react";
 
-function App() {
-  const [count, setCount] = useState(0)
+const ResultArticle = () => {
+  const [results, setResults] = useState([]);
+
+  const getArticles = async () => {
+    try {
+      const response = await fetch(
+        `https://dev.to/api/articles?top=1&per_page=10`,
+      );
+      const data = await response.json();
+      setResults(data);
+    } catch (error) {
+      console.error("Erreur de chargement:", error);
+    }
+  };
+  const listItems = results.map((item) => <li key={item}>{item}</li>);
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={appLogo} className="logo" alt="devoir-pwa logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>devoir-pwa</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-      <PWABadge />
+      <button
+        onClick={() => {
+          getArticles();
+        }}
+      >
+        Click me
+      </button>
+      <ul>{listItems}</ul>
     </>
-  )
-}
+  );
+};
 
-export default App
+export default ResultArticle;
