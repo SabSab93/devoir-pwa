@@ -18,12 +18,40 @@ export default defineConfig({
       short_name: 'devoir-pwa',
       description: 'devoir-pwa',
       theme_color: '#ffffff',
+      display: "standalone",
+      icons: [
+        {
+      src: "src/assets/react/svg",
+      sizes: "48x48",
+      type: "image/png"
+        },
+     ],
+     start_url: "./?utm_source=web_app_manifest"
     },
 
     workbox: {
       globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
       cleanupOutdatedCaches: true,
       clientsClaim: true,
+      runtimeCaching: [
+        {
+          
+          urlPattern: /^https:\/\/devto-news-cache\.dev\.to\/api\/.*/i,
+          handler: 'StaleWhileRevalidate',
+          options: {
+            cacheName: 'api-article-search',
+            networkTimeoutSeconds: 2,
+            expiration: {
+              maxEntries: 50,
+              maxAgeSeconds: 60 * 60 * 24, 
+            },
+            cacheableResponse: {
+              statuses: [0, 200],
+            },
+          },
+        },
+      ],
+      
     },
 
     devOptions: {
