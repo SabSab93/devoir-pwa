@@ -1,73 +1,228 @@
-# React + TypeScript + Vite
+# TP — Async/Await & PWA avec Workbox
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Exercice 1 — Callbacks → Async/Await
 
-Currently, two official plugins are available:
+### Contexte
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Le code ci-dessous simule un pipeline de traitement de données : récupération d'un utilisateur, puis de ses commandes, puis calcul du total de ses achats. Il est écrit en style **callback pyramidal** (callback hell).
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Code de départ
 
 ```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+function getUser(userId, callback) {
+  setTimeout(() => {
+    if (!userId) return callback(new Error("userId manquant"), null);
+    callback(null, { id: userId, name: "Alice", email: "alice@example.com" });
+  }, 300);
+}
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+function getOrders(user, callback) {
+  setTimeout(() => {
+    if (!user) return callback(new Error("Utilisateur introuvable"), null);
+    callback(null, [
+      { id: 1, product: "Laptop", price: 999 },
+      { id: 2, product: "Souris", price: 29 },
+      { id: 3, product: "Clavier", price: 79 },
+    ]);
+  }, 400);
+}
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+function computeTotal(orders, callback) {
+  setTimeout(() => {
+    if (!orders || orders.length === 0)
+      return callback(new Error("Aucune commande"), null);
+    const total = orders.reduce((acc, o) => acc + o.price, 0);
+    callback(null, total);
+  }, 200);
+}
+
+// Utilisation — callback hell
+getUser(42, (err, user) => {
+  if (err) {
+    console.error("Erreur :", err.message);
+    return;
+  }
+  getOrders(user, (err, orders) => {
+    if (err) {
+      console.error("Erreur :", err.message);
+      return;
+    }
+    computeTotal(orders, (err, total) => {
+      if (err) {
+        console.error("Erreur :", err.message);
+        return;
+      }
+      console.log(`Total des achats de ${user.name} : ${total}€`);
+    });
+  });
+});
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Consignes
+
+1. Transformer chaque fonction (`getUser`, `getOrders`, `computeTotal`) en **Promise**.
+```js
+function getUser(userId) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (!userId) {
+        reject(new Error("userId manquant"));
+      } else {
+        resolve({
+          id: userId,name: "Alice", email: "alice@example.com"
+        });
+      }
+    }, 300);
+  });
+}
+```
 
 ```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+function getOrders(user) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (!user) {
+        reject(new Error("Utilisateur introuvable"))
+      } else {
+        resolve([
+      { id: 1, product: "Laptop", price: 999 },
+      { id: 2, product: "Souris", price: 29 },
+      { id: 3, product: "Clavier", price: 79 },
+    ]);
+      }
+    }, 400);
+  });
+}
 ```
+
+```js
+function computeTotal(orders) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (!orders || orders.length === 0) {
+        reject(new Error("Aucune commande"));
+      } else {
+        const total = orders.reduce((acc, o) => acc + o.price, 0);
+        resolve(total);
+      }
+    }, 200);
+  });
+}
+```
+
+2. Écrire une fonction `processUser(userId)` en **async/await** qui orchestre les trois appels.
+3. Gérer les erreurs avec un `try/catch`.
+```js
+async function processUser(userId) {
+  try {
+    const user = await getUser(userId);
+    const orders = await getOrders(user);
+    const total = await computeTotal(orders);
+
+    console.log(`Total des achats de ${user.name} : ${total}€`);
+  } catch (error) {
+    console.error("Erreur :", error.message);
+  }
+}
+```
+
+
+4. Le résultat affiché doit être identique à l'original.
+
+---
+## Exercice 2 — Then/Catch → Async/Await
+
+### Contexte
+
+Le code suivant consomme une API de blagues (`https://official-joke-api.appspot.com/random_ten`) avec des `.then()/.catch()` chaînés. Il filtre les blagues, les formate, puis les affiche.
+
+### Code de départ
+
+```js
+const API_URL = "https://official-joke-api.appspot.com/random_ten";
+
+function fetchJokes() {
+  return fetch(API_URL)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then((jokes) => {
+      return jokes.filter((joke) => joke.type === "general");
+    })
+    .then((filtered) => {
+      return filtered.map((joke) => ({
+        id: joke.id,
+        question: joke.setup,
+        answer: joke.punchline,
+      }));
+    })
+    .then((formatted) => {
+      formatted.forEach((joke) => {
+        console.log(`Q: ${joke.question}`);
+        console.log(`R: ${joke.answer}`);
+        console.log("---");
+      });
+      return formatted;
+    })
+    .catch((err) => {
+      console.error("Impossible de récupérer les blagues :", err.message);
+      return [];
+    });
+}
+
+fetchJokes();
+```
+
+### Consignes
+
+1. Réécrire `fetchJokes` en **async/await** sans `.then()` ni `.catch()` dans le corps de la fonction.
+2. Conserver exactement la même logique : vérification du statut HTTP, filtre par type, mapping, affichage.
+3. Gérer les erreurs avec `try/catch` et retourner `[]` en cas d'échec, comme l'original.
+4. La signature de la fonction doit rester `fetchJokes()` (aucun paramètre).
+```ts
+async function fetchJokes() {
+  try {
+    const response = await fetch(API_URL);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`);
+    }
+    const jokes = await response.json();
+    const filtered = jokes.filter((joke) => joke.type === "general");
+    const formatted = filtered.map((joke) => ({
+      id: joke.id,
+      question: joke.setup,
+      answer: joke.punchline,
+    }));
+    formatted.forEach((joke) => {
+      console.log(`Q: ${joke.question}`);
+      console.log(`R: ${joke.answer}`);
+      console.log("---");
+    });
+    return formatted;
+
+  } catch (err) {
+    console.error("Impossible de récupérer les blagues :", err.message);
+    return [];
+  }
+}
+fetchJokes();
+```
+
+5. Appeler 2 fois `fetchJokes()` en parallèle et afficher les résultats combinés.
+
+
+## Exercice 3 — PWA : News Dev.to avec Vite PWA & Stale-While-Revalidate
+
+### Contexte
+
+Vous allez construire une **PWA** qui affiche les articles tendance de [Dev.to](https://dev.to). Elle doit fonctionner **hors-ligne** grâce à une stratégie de cache **StaleWhileRevalidate** configurée via le plugin **vite-plugin-pwa** (Workbox sous le capot).
+
+API utilisée — publique, sans clé :
+```
+https://dev.to/api/articles?top=1&per_page=10
+```
+
